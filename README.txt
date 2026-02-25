@@ -1,6 +1,6 @@
 # Charli McInturff — Portfolio Website
 
-This is a simple, clean, recruiter-friendly portfolio site (HTML + CSS).
+
 
 ## Files
 - `index.html` — main page
