@@ -331,3 +331,31 @@ input:focus, textarea:focus{
   background: rgba(47,107,255,.10);
   border:1px solid rgba(47,107,255,.22);
 }
+
+
+/* --- Skills Section Spacing Fix --- */
+
+#skills .grid.three{
+  gap: 24px;
+  margin-top: 24px;
+}
+
+#skills .panel{
+  padding: 24px;
+  min-height: 180px;
+}
+
+#skills .tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:12px;
+}
+
+#skills .tag{
+  padding:8px 12px;
+  font-size:13px;
+  border-radius:999px;
+  background: rgba(47,107,255,.08);
+  border:1px solid rgba(47,107,255,.18);
+}
