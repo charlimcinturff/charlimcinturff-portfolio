@@ -390,16 +390,31 @@
       grid-column: span 2;
     }
 
-    .featured-proj .proj-img {
-      aspect-ratio: 16 / 9;
-    }
-
     .proj.card {
       border-radius: 24px;
       padding: 1.3rem;
       display: flex;
       flex-direction: column;
       gap: 0.9rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .proj.card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(138,180,255,0.28);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.42);
+    }
+
+    .proj.card::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% -40% auto;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(138,180,255,0.10), transparent 68%);
+      pointer-events: none;
     }
 
     .proj-top {
@@ -408,14 +423,85 @@
       gap: 0.35rem;
     }
 
-    .proj-title-row {
+    .proj-meta {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.75rem;
+      gap: 0.8rem;
+      flex-wrap: wrap;
     }
 
-    .muted { color: var(--subtle); }
+    .proj-visual {
+      position: relative;
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      overflow: hidden;
+    }
+
+    .proj-visual.swarm-demo {
+      aspect-ratio: 16 / 9;
+      min-height: 260px;
+      background:
+        radial-gradient(circle at top, rgba(138,180,255,0.18), transparent 35%),
+        linear-gradient(180deg, rgba(9,16,34,0.95), rgba(13,22,46,0.95));
+    }
+
+    .proj-visual-label {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 2;
+      padding: 0.45rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      background: rgba(8,16,31,0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .swarm-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .proj-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: auto;
+      padding-top: 0.3rem;
+    }
+
+    .proj-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.72rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .proj-link:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(138,180,255,0.26);
+      transform: translateY(-1px);
+    }
+
+    .proj-link.primary {
+      background: linear-gradient(135deg, rgba(138,180,255,0.18), rgba(142,240,208,0.16));
+      border-color: rgba(138,180,255,0.24);
+    }
 
     .proj-img {
       width: 100%;
@@ -424,6 +510,10 @@
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,0.08);
       background: rgba(255,255,255,0.04);
+    }
+
+    .featured-proj .proj-img {
+      aspect-ratio: 16 / 9;
     }
 
     .badge {
@@ -695,7 +785,10 @@
               </div>
               <p class="muted">Bayes’ Theorem • Swarm Intelligence • Agent-Based Modeling</p>
             </div>
-            <img src="bayesian_swarm.png" class="proj-img" alt="Bayesian swarm search simulation with ant agents inside circular boundary" />
+            <div class="proj-visual swarm-demo" aria-label="Animated swarm simulation preview">
+              <div class="proj-visual-label">Live swarm preview</div>
+              <canvas id="swarmCanvas" class="swarm-canvas"></canvas>
+            </div>
             <p>
             In early february I had attented a lecture on Swarm Intelligence which was a new concept to me. This talk had peaked my curiosity and become a concept I wanted to work more with.  
            This simulation models swarm search using <strong>Bayes’ Theorem</strong> as the decision engine. Each agent updates a belief state from observations and interactions, allowing search behavior to emerge from repeated probabilistic updates.
@@ -706,6 +799,10 @@
               <li>Stochastic motion constrained to a bounded environment</li>
               <li>Clear visualization with robust contact handling</li>
             </ul>
+            <div class="proj-links">
+              <a class="proj-link primary" href="#contact">Ask for full demo</a>
+              <a class="proj-link" href="#skills">See technical skills</a>
+            </div>
           </article>
 
           <article class="proj card">
@@ -731,12 +828,10 @@
             <div class="proj-top">
               <div class="proj-title-row">
                 <h3>AutoBook (MBSE / SysML)</h3>
-          
               </div>
               <p class="muted">MBSE • Requirements • Diagram Creation</p>
-              
             </div>
-               <img src="AutoBook.png" class="proj-img" alt="AutoBook MBSE Diagram" />
+            <img src="AutoBook.png" class="proj-img" alt="AutoBook MBSE Diagram" />
             <p> Designed AutoBook, an autonomous bookstore fulfillment system using a model-based systems engineering approach to automate textbook order processing, reduce fulfillment errors, and improve delivery speed during peak academic periods.
 </p>
             <ul class="bullets">
@@ -745,6 +840,10 @@
               <li>Integrated database-driven order and inventory tracking.</li>
               <li>Conducted cost and risk analysis to evaluate system feasibility.</li>
             </ul>
+            <div class="proj-links">
+              <a class="proj-link primary" href="#contact">Request project walkthrough</a>
+              <a class="proj-link" href="#experience">View related experience</a>
+            </div>
           </article>
 
 
@@ -833,6 +932,137 @@
 
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    const swarmCanvas = document.getElementById('swarmCanvas');
+    if (swarmCanvas) {
+      const ctx = swarmCanvas.getContext('2d');
+      const agents = [];
+      const agentCount = 42;
+      let width = 0;
+      let height = 0;
+      let centerX = 0;
+      let centerY = 0;
+      let radius = 0;
+      let target = { x: 0, y: 0, angle: 0 };
+
+      function resizeSwarm() {
+        const rect = swarmCanvas.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        swarmCanvas.width = Math.floor(width * window.devicePixelRatio);
+        swarmCanvas.height = Math.floor(height * window.devicePixelRatio);
+        ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+        centerX = width / 2;
+        centerY = height / 2;
+        radius = Math.min(width, height) * 0.34;
+      }
+
+      function createAgents() {
+        agents.length = 0;
+        for (let i = 0; i < agentCount; i++) {
+          const angle = (Math.PI * 2 * i) / agentCount;
+          const dist = radius * (0.25 + Math.random() * 0.7);
+          agents.push({
+            x: centerX + Math.cos(angle) * dist,
+            y: centerY + Math.sin(angle) * dist,
+            vx: (Math.random() - 0.5) * 0.7,
+            vy: (Math.random() - 0.5) * 0.7,
+            size: 2 + Math.random() * 2.5,
+            bias: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      function updateTarget(time) {
+        target.angle = time * 0.00035;
+        const wobble = radius * 0.46;
+        target.x = centerX + Math.cos(target.angle) * wobble;
+        target.y = centerY + Math.sin(target.angle * 1.4) * wobble * 0.7;
+      }
+
+      function drawScene(time) {
+        updateTarget(time);
+        ctx.clearRect(0, 0, width, height);
+
+        const ring = ctx.createRadialGradient(centerX, centerY, radius * 0.1, centerX, centerY, radius * 1.25);
+        ring.addColorStop(0, 'rgba(142,240,208,0.08)');
+        ring.addColorStop(1, 'rgba(138,180,255,0.02)');
+        ctx.fillStyle = ring;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 1.28, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 1.04, 0, Math.PI * 2);
+        ctx.stroke();
+
+        for (let i = 0; i < agents.length; i++) {
+          const a = agents[i];
+          const dx = target.x - a.x;
+          const dy = target.y - a.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const angle = Math.atan2(dy, dx);
+
+          a.vx += Math.cos(angle + Math.sin(time * 0.001 + a.bias) * 0.5) * 0.02;
+          a.vy += Math.sin(angle + Math.cos(time * 0.0011 + a.bias) * 0.5) * 0.02;
+          a.vx += (Math.random() - 0.5) * 0.03;
+          a.vy += (Math.random() - 0.5) * 0.03;
+          a.vx *= 0.97;
+          a.vy *= 0.97;
+          a.x += a.vx;
+          a.y += a.vy;
+
+          const fromCenterX = a.x - centerX;
+          const fromCenterY = a.y - centerY;
+          const fromCenter = Math.hypot(fromCenterX, fromCenterY);
+          if (fromCenter > radius) {
+            const normalX = fromCenterX / fromCenter;
+            const normalY = fromCenterY / fromCenter;
+            a.x = centerX + normalX * radius;
+            a.y = centerY + normalY * radius;
+            a.vx -= normalX * 0.45;
+            a.vy -= normalY * 0.45;
+          }
+
+          if (dist < 90) {
+            ctx.strokeStyle = 'rgba(138,180,255,0.10)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(target.x, target.y);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = 'rgba(142,240,208,0.92)';
+          ctx.beginPath();
+          ctx.arc(a.x, a.y, a.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = 'rgba(138,180,255,0.95)';
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(138,180,255,0.35)';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 18, 0, Math.PI * 2);
+        ctx.stroke();
+
+        requestAnimationFrame(drawScene);
+      }
+
+      resizeSwarm();
+      createAgents();
+      window.addEventListener('resize', () => {
+        resizeSwarm();
+        createAgents();
+      });
+      requestAnimationFrame(drawScene);
+    }
   </script>
 </body>
 </html>
