@@ -442,10 +442,11 @@
 
     .proj-visual.swarm-demo {
       aspect-ratio: 16 / 9;
-      min-height: 260px;
+      min-height: 340px;
       background:
-        radial-gradient(circle at top, rgba(138,180,255,0.18), transparent 35%),
-        linear-gradient(180deg, rgba(9,16,34,0.95), rgba(13,22,46,0.95));
+        radial-gradient(circle at 50% 20%, rgba(138,180,255,0.20), transparent 30%),
+        radial-gradient(circle at 20% 80%, rgba(142,240,208,0.08), transparent 24%),
+        linear-gradient(180deg, rgba(7,13,28,0.98), rgba(12,20,41,0.98));
     }
 
     .proj-visual-label {
@@ -457,11 +458,74 @@
       border-radius: 999px;
       font-size: 0.82rem;
       font-weight: 700;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       color: var(--text);
       background: rgba(8,16,31,0.72);
       border: 1px solid rgba(255,255,255,0.08);
       backdrop-filter: blur(10px);
+    }
+
+    .proj-visual-stats {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 2;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 60%;
+    }
+
+    .stat-pill {
+      padding: 0.38rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      background: rgba(8,16,31,0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+
+    .tech-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(138,180,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(138,180,255,0.08) 1px, transparent 1px);
+      background-size: 26px 26px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 78%);
+      pointer-events: none;
+    }
+
+    .swarm-hud {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 14px;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.8rem;
+      align-items: center;
+      padding: 0.7rem 0.85rem;
+      border-radius: 14px;
+      background: rgba(8,16,31,0.68);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .swarm-hud-text {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .swarm-hud strong {
+      color: var(--text);
     }
 
     .swarm-canvas {
@@ -786,11 +850,21 @@
               <p class="muted">Bayes’ Theorem • Swarm Intelligence • Agent-Based Modeling</p>
             </div>
             <div class="proj-visual swarm-demo" aria-label="Animated swarm simulation preview">
-              <div class="proj-visual-label">Live swarm preview</div>
+              <div class="tech-grid" aria-hidden="true"></div>
+              <div class="proj-visual-label">Bayesian ant simulation</div>
+              <div class="proj-visual-stats">
+                <div class="stat-pill" id="swarmMode">SEARCHING</div>
+                <div class="stat-pill" id="swarmPairs">PAIRS 0</div>
+                <div class="stat-pill" id="swarmPile">PILE 1</div>
+              </div>
               <canvas id="swarmCanvas" class="swarm-canvas"></canvas>
+              <div class="swarm-hud">
+                <div class="swarm-hud-text"><strong>Model:</strong> live ants + corpse piling + Bayesian searcher</div>
+                <div class="swarm-hud-text"><strong>Behavior:</strong> smooth steering, avoidance, pile formation</div>
+              </div>
             </div>
             <p>
-            In early february I had attented a lecture on Swarm Intelligence which was a new concept to me. This talk had peaked my curiosity and become a concept I wanted to work more with.  
+           *SIMULATION ABOVE IS JUST A VISUAL EXAMPLE, NOT ACTUALLY PROGRAM/LOGIC* In early february I had attented a lecture on Swarm Intelligence which was a new concept to me. This talk had peaked my curiosity and become a concept I wanted to work more with.  
            This simulation models swarm search using <strong>Bayes’ Theorem</strong> as the decision engine. Each agent updates a belief state from observations and interactions, allowing search behavior to emerge from repeated probabilistic updates.
             </p>
             <ul class="bullets">
@@ -936,132 +1010,501 @@
     const swarmCanvas = document.getElementById('swarmCanvas');
     if (swarmCanvas) {
       const ctx = swarmCanvas.getContext('2d');
-      const agents = [];
-      const agentCount = 42;
+      const modeEl = document.getElementById('swarmMode');
+      const pairsEl = document.getElementById('swarmPairs');
+      const pileEl = document.getElementById('swarmPile');
+
+      const R = 20;
+      const nDead = 20;
+      const nAlive = 30;
+      const dt = 0.03;
+      const speed = 7;
+      const step = speed * dt;
+      const captureRadius = 1.2;
+      const liveAvoidRadius = 1.0;
+      const aliveSpeed = 2.0;
+      const aliveStep = aliveSpeed * dt;
+      const aliveTurnNoise = 0.25;
+      const sensorRadius = 4.0;
+      const pHit = 0.90;
+      const pFA = 0.05;
+      const replanEvery = 8;
+      const avoidGain = 1.0;
+      const smoothTurn = 0.18;
+      const targetJitter = 0.08;
+      const gridN = 35;
+
       let width = 0;
       let height = 0;
+      let scale = 1;
       let centerX = 0;
       let centerY = 0;
-      let radius = 0;
-      let target = { x: 0, y: 0, angle: 0 };
+      let arenaRadiusPx = 0;
+      let animFrame = 0;
+      let pairsMade = 0;
+      let state = 0;
+      let firstIdx = -1;
+      let target = { x: 0, y: 0 };
+      let rafId = null;
+
+      const xg = Array.from({ length: gridN }, (_, i) => -R + (2 * R * i) / (gridN - 1));
+      const yg = Array.from({ length: gridN }, (_, i) => -R + (2 * R * i) / (gridN - 1));
+      const belief = [];
+      const inCircle = [];
+      let validCells = 0;
+      for (let j = 0; j < gridN; j++) {
+        belief[j] = [];
+        inCircle[j] = [];
+        for (let i = 0; i < gridN; i++) {
+          const inside = xg[i] * xg[i] + yg[j] * yg[j] <= R * R;
+          inCircle[j][i] = inside;
+          if (inside) validCells++;
+        }
+      }
+
+      const deadAnts = [];
+      const aliveAnts = [];
+      const searcher = { x: 0, y: 0, angle: 0 };
+
+      function randCircle() {
+        const a = Math.random() * Math.PI * 2;
+        const r = R * Math.sqrt(Math.random());
+        return { x: r * Math.cos(a), y: r * Math.sin(a) };
+      }
+
+      function randomNormal() {
+        let u = 0;
+        let v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      }
+
+      function resetBelief() {
+        for (let j = 0; j < gridN; j++) {
+          for (let i = 0; i < gridN; i++) {
+            belief[j][i] = inCircle[j][i] ? 1 / validCells : 0;
+          }
+        }
+      }
+
+      function clampInsidePoint(p) {
+        const d = Math.hypot(p.x, p.y);
+        if (d > R) {
+          const f = (R - 1e-4) / d;
+          p.x *= f;
+          p.y *= f;
+        }
+      }
+
+      function wrapToPi(a) {
+        let out = (a + Math.PI) % (2 * Math.PI);
+        if (out < 0) out += 2 * Math.PI;
+        return out - Math.PI;
+      }
+
+      function worldToScreen(x, y) {
+        return { x: centerX + x * scale, y: centerY - y * scale };
+      }
 
       function resizeSwarm() {
         const rect = swarmCanvas.getBoundingClientRect();
-        width = rect.width;
-        height = rect.height;
-        swarmCanvas.width = Math.floor(width * window.devicePixelRatio);
-        swarmCanvas.height = Math.floor(height * window.devicePixelRatio);
-        ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+        width = Math.max(1, rect.width);
+        height = Math.max(1, rect.height);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        swarmCanvas.width = Math.floor(width * dpr);
+        swarmCanvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         centerX = width / 2;
         centerY = height / 2;
-        radius = Math.min(width, height) * 0.34;
+        arenaRadiusPx = Math.min(width, height) * 0.38;
+        scale = arenaRadiusPx / R;
       }
 
-      function createAgents() {
-        agents.length = 0;
-        for (let i = 0; i < agentCount; i++) {
-          const angle = (Math.PI * 2 * i) / agentCount;
-          const dist = radius * (0.25 + Math.random() * 0.7);
-          agents.push({
-            x: centerX + Math.cos(angle) * dist,
-            y: centerY + Math.sin(angle) * dist,
-            vx: (Math.random() - 0.5) * 0.7,
-            vy: (Math.random() - 0.5) * 0.7,
-            size: 2 + Math.random() * 2.5,
-            bias: Math.random() * Math.PI * 2
-          });
+      function initSimulation() {
+        deadAnts.length = 0;
+        aliveAnts.length = 0;
+        pairsMade = 0;
+        state = 0;
+        firstIdx = -1;
+        animFrame = 0;
+        resetBelief();
+
+        for (let i = 0; i < nDead; i++) deadAnts.push(randCircle());
+        for (let i = 0; i < nAlive; i++) {
+          const p = randCircle();
+          const theta = Math.random() * Math.PI * 2;
+          aliveAnts.push({ x: p.x, y: p.y, vx: Math.cos(theta), vy: Math.sin(theta) });
+        }
+
+        const s = randCircle();
+        searcher.x = s.x;
+        searcher.y = s.y;
+        searcher.angle = Math.random() * Math.PI * 2;
+        target = { x: searcher.x, y: searcher.y };
+      }
+
+      function renormalizeBelief() {
+        let sum = 0;
+        for (let j = 0; j < gridN; j++) {
+          for (let i = 0; i < gridN; i++) sum += belief[j][i];
+        }
+        if (!Number.isFinite(sum) || sum <= 0) {
+          resetBelief();
+          return;
+        }
+        for (let j = 0; j < gridN; j++) {
+          for (let i = 0; i < gridN; i++) belief[j][i] /= sum;
         }
       }
 
-      function updateTarget(time) {
-        target.angle = time * 0.00035;
-        const wobble = radius * 0.46;
-        target.x = centerX + Math.cos(target.angle) * wobble;
-        target.y = centerY + Math.sin(target.angle * 1.4) * wobble * 0.7;
+      function updateAliveAnts() {
+        for (const ant of aliveAnts) {
+          const dTheta = aliveTurnNoise * randomNormal();
+          const c = Math.cos(dTheta);
+          const s = Math.sin(dTheta);
+          const vx = ant.vx;
+          const vy = ant.vy;
+          ant.vx = c * vx - s * vy;
+          ant.vy = s * vx + c * vy;
+          const vn = Math.hypot(ant.vx, ant.vy) || 1;
+          ant.vx /= vn;
+          ant.vy /= vn;
+
+          let nextX = ant.x + aliveStep * ant.vx;
+          let nextY = ant.y + aliveStep * ant.vy;
+          if (nextX * nextX + nextY * nextY > R * R) {
+            const rn = Math.hypot(ant.x, ant.y) || 1;
+            const nx = ant.x / rn;
+            const ny = ant.y / rn;
+            const dot = ant.vx * nx + ant.vy * ny;
+            ant.vx = ant.vx - 2 * dot * nx;
+            ant.vy = ant.vy - 2 * dot * ny;
+            const v2 = Math.hypot(ant.vx, ant.vy) || 1;
+            ant.vx /= v2;
+            ant.vy /= v2;
+            nextX = ant.x + aliveStep * ant.vx;
+            nextY = ant.y + aliveStep * ant.vy;
+          }
+          ant.x = nextX;
+          ant.y = nextY;
+          clampInsidePoint(ant);
+        }
       }
 
-      function drawScene(time) {
-        updateTarget(time);
+      function getRepulsion() {
+        let rx = 0;
+        let ry = 0;
+        let found = false;
+        for (const ant of aliveAnts) {
+          const dx = searcher.x - ant.x;
+          const dy = searcher.y - ant.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= liveAvoidRadius * liveAvoidRadius) {
+            const w = (liveAvoidRadius * liveAvoidRadius - d2) / Math.max(liveAvoidRadius * liveAvoidRadius, 1e-12);
+            rx += dx * w;
+            ry += dy * w;
+            found = true;
+          }
+        }
+        if (!found) return { x: 0, y: 0 };
+        const n = Math.hypot(rx, ry) || 1;
+        return { x: rx / n, y: ry / n };
+      }
+
+      function updateBeliefAndTarget() {
+        if (state !== 0) return;
+
+        let detect = false;
+        for (const d of deadAnts) {
+          const dx = d.x - searcher.x;
+          const dy = d.y - searcher.y;
+          if (dx * dx + dy * dy <= sensorRadius * sensorRadius) {
+            detect = true;
+            break;
+          }
+        }
+
+        for (let j = 0; j < gridN; j++) {
+          for (let i = 0; i < gridN; i++) {
+            if (!inCircle[j][i]) {
+              belief[j][i] = 0;
+              continue;
+            }
+            const seen = (xg[i] - searcher.x) ** 2 + (yg[j] - searcher.y) ** 2 <= sensorRadius * sensorRadius;
+            const like = detect ? (seen ? pHit : pFA) : (seen ? (1 - pHit) : (1 - pFA));
+            belief[j][i] *= like;
+          }
+        }
+        renormalizeBelief();
+
+        if (animFrame % replanEvery === 0) {
+          let best = -1;
+          let bestI = 0;
+          let bestJ = 0;
+          for (let j = 0; j < gridN; j++) {
+            for (let i = 0; i < gridN; i++) {
+              if (!inCircle[j][i]) continue;
+              if (belief[j][i] > best) {
+                best = belief[j][i];
+                bestI = i;
+                bestJ = j;
+              }
+            }
+          }
+          target = { x: xg[bestI], y: yg[bestJ] };
+        }
+      }
+
+      function updateSearcher() {
+        const rep = getRepulsion();
+
+        if (state === 0) {
+          let dirX = target.x - searcher.x;
+          let dirY = target.y - searcher.y;
+          let dn = Math.hypot(dirX, dirY);
+          if (dn < 1e-9) {
+            dirX = Math.cos(searcher.angle);
+            dirY = Math.sin(searcher.angle);
+            dn = 1;
+          }
+          dirX /= dn;
+          dirY /= dn;
+
+          let desiredX = dirX + avoidGain * rep.x;
+          let desiredY = dirY + avoidGain * rep.y;
+          desiredX += targetJitter * randomNormal();
+          desiredY += targetJitter * randomNormal();
+
+          let desiredNorm = Math.hypot(desiredX, desiredY);
+          if (desiredNorm < 1e-9) {
+            desiredX = Math.cos(searcher.angle);
+            desiredY = Math.sin(searcher.angle);
+            desiredNorm = 1;
+          }
+          desiredX /= desiredNorm;
+          desiredY /= desiredNorm;
+
+          const desiredAngle = Math.atan2(desiredY, desiredX);
+          let dAng = wrapToPi(desiredAngle - searcher.angle);
+          dAng = Math.max(-smoothTurn, Math.min(smoothTurn, dAng));
+          searcher.angle = wrapToPi(searcher.angle + dAng);
+        }
+
+        let vx = Math.cos(searcher.angle);
+        let vy = Math.sin(searcher.angle);
+        let nextX = searcher.x + step * vx;
+        let nextY = searcher.y + step * vy;
+
+        if (nextX * nextX + nextY * nextY > R * R) {
+          let rx = searcher.x;
+          let ry = searcher.y;
+          let rn = Math.hypot(rx, ry);
+          if (rn < 1e-9) {
+            rx = 1;
+            ry = 0;
+            rn = 1;
+          }
+          const nx = rx / rn;
+          const ny = ry / rn;
+          const dot = vx * nx + vy * ny;
+          vx = vx - 2 * dot * nx;
+          vy = vy - 2 * dot * ny;
+          const vNorm = Math.hypot(vx, vy) || 1;
+          vx /= vNorm;
+          vy /= vNorm;
+          searcher.angle = Math.atan2(vy, vx);
+          nextX = searcher.x + step * vx;
+          nextY = searcher.y + step * vy;
+        }
+
+        searcher.x = nextX;
+        searcher.y = nextY;
+        clampInsidePoint(searcher);
+      }
+
+      function updatePilingLogic() {
+        let minD2 = Infinity;
+        let idx = -1;
+        for (let i = 0; i < deadAnts.length; i++) {
+          const dx = deadAnts[i].x - searcher.x;
+          const dy = deadAnts[i].y - searcher.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < minD2) {
+            minD2 = d2;
+            idx = i;
+          }
+        }
+
+        if (minD2 <= captureRadius * captureRadius) {
+          if (state === 0) {
+            firstIdx = idx;
+            state = 1;
+          } else if (idx !== firstIdx && idx !== -1 && firstIdx !== -1) {
+            deadAnts[firstIdx].x = deadAnts[idx].x;
+            deadAnts[firstIdx].y = deadAnts[idx].y;
+            pairsMade += 1;
+            searcher.angle = wrapToPi(searcher.angle + Math.PI);
+            state = 0;
+            firstIdx = -1;
+          }
+        }
+      }
+
+      function getPileInfo() {
+        const counts = new Map();
+        for (const d of deadAnts) {
+          const key = `${d.x.toFixed(2)},${d.y.toFixed(2)}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        let biggest = 1;
+        for (const val of counts.values()) biggest = Math.max(biggest, val);
+        return { counts, biggest };
+      }
+
+      function drawBeliefMap() {
+        const cellW = (2 * R / (gridN - 1)) * scale;
+        for (let j = 0; j < gridN - 1; j++) {
+          for (let i = 0; i < gridN - 1; i++) {
+            const b = belief[j][i];
+            if (!inCircle[j][i] || b < 0.0012) continue;
+            const p = worldToScreen(xg[i], yg[j]);
+            const alpha = Math.min(0.18, b * 14);
+            ctx.fillStyle = `rgba(138,180,255,${alpha})`;
+            ctx.fillRect(p.x - cellW / 2, p.y - cellW / 2, cellW, cellW);
+          }
+        }
+      }
+
+      function drawScene() {
         ctx.clearRect(0, 0, width, height);
 
-        const ring = ctx.createRadialGradient(centerX, centerY, radius * 0.1, centerX, centerY, radius * 1.25);
-        ring.addColorStop(0, 'rgba(142,240,208,0.08)');
-        ring.addColorStop(1, 'rgba(138,180,255,0.02)');
-        ctx.fillStyle = ring;
+        const glow = ctx.createRadialGradient(centerX, centerY, arenaRadiusPx * 0.15, centerX, centerY, arenaRadiusPx * 1.1);
+        glow.addColorStop(0, 'rgba(142,240,208,0.05)');
+        glow.addColorStop(1, 'rgba(138,180,255,0.02)');
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius * 1.28, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, arenaRadiusPx * 1.1, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        drawBeliefMap();
+
+        ctx.strokeStyle = 'rgba(160,190,255,0.18)';
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius * 1.04, 0, Math.PI * 2);
-        ctx.stroke();
-
-        for (let i = 0; i < agents.length; i++) {
-          const a = agents[i];
-          const dx = target.x - a.x;
-          const dy = target.y - a.y;
-          const dist = Math.hypot(dx, dy) || 1;
-          const angle = Math.atan2(dy, dx);
-
-          a.vx += Math.cos(angle + Math.sin(time * 0.001 + a.bias) * 0.5) * 0.02;
-          a.vy += Math.sin(angle + Math.cos(time * 0.0011 + a.bias) * 0.5) * 0.02;
-          a.vx += (Math.random() - 0.5) * 0.03;
-          a.vy += (Math.random() - 0.5) * 0.03;
-          a.vx *= 0.97;
-          a.vy *= 0.97;
-          a.x += a.vx;
-          a.y += a.vy;
-
-          const fromCenterX = a.x - centerX;
-          const fromCenterY = a.y - centerY;
-          const fromCenter = Math.hypot(fromCenterX, fromCenterY);
-          if (fromCenter > radius) {
-            const normalX = fromCenterX / fromCenter;
-            const normalY = fromCenterY / fromCenter;
-            a.x = centerX + normalX * radius;
-            a.y = centerY + normalY * radius;
-            a.vx -= normalX * 0.45;
-            a.vy -= normalY * 0.45;
-          }
-
-          if (dist < 90) {
-            ctx.strokeStyle = 'rgba(138,180,255,0.10)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(target.x, target.y);
-            ctx.stroke();
-          }
-
-          ctx.fillStyle = 'rgba(142,240,208,0.92)';
+        for (let r = 0.25; r <= 1; r += 0.25) {
           ctx.beginPath();
-          ctx.arc(a.x, a.y, a.size, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.arc(centerX, centerY, arenaRadiusPx * r, 0, Math.PI * 2);
+          ctx.stroke();
         }
 
-        ctx.fillStyle = 'rgba(138,180,255,0.95)';
+        ctx.strokeStyle = 'rgba(210,225,255,0.45)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(target.x, target.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(138,180,255,0.35)';
-        ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.arc(target.x, target.y, 18, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, arenaRadiusPx, 0, Math.PI * 2);
         ctx.stroke();
 
-        requestAnimationFrame(drawScene);
+        const pileInfo = getPileInfo();
+
+        for (const ant of aliveAnts) {
+          const p = worldToScreen(ant.x, ant.y);
+          const angle = Math.atan2(-ant.vy, ant.vx);
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(angle);
+          ctx.strokeStyle = 'rgba(230,240,255,0.34)';
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.moveTo(-4, 0);
+          ctx.lineTo(4, 0);
+          ctx.moveTo(0, -4);
+          ctx.lineTo(0, 4);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (const d of deadAnts) {
+          const key = `${d.x.toFixed(2)},${d.y.toFixed(2)}`;
+          const count = pileInfo.counts.get(key) || 1;
+          const p = worldToScreen(d.x, d.y);
+          const size = 3.5 + count * 1.8;
+          ctx.fillStyle = 'rgba(255,164,107,0.90)';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,220,180,0.35)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        const sp = worldToScreen(searcher.x, searcher.y);
+        const tp = worldToScreen(target.x, target.y);
+        if (state === 0) {
+          ctx.strokeStyle = 'rgba(138,180,255,0.55)';
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([5, 7]);
+          ctx.beginPath();
+          ctx.moveTo(sp.x, sp.y);
+          ctx.lineTo(tp.x, tp.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.strokeStyle = 'rgba(138,180,255,0.85)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, 8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, 16, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.translate(sp.x, sp.y);
+        ctx.rotate(-searcher.angle);
+        ctx.fillStyle = state === 0 ? 'rgba(142,240,208,0.98)' : 'rgba(255,214,102,0.98)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(10, 0);
+        ctx.lineTo(-7, -5.5);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-7, 5.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(142,240,208,0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sensorRadius * scale, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (state === 1 && firstIdx >= 0) {
+          ctx.fillStyle = 'rgba(255,214,102,0.9)';
+          ctx.fillRect(sp.x - 4, sp.y - 18, 8, 8);
+        }
+
+        if (modeEl) modeEl.textContent = state === 0 ? 'SEARCHING' : 'CARRYING';
+        if (pairsEl) pairsEl.textContent = `PAIRS ${pairsMade}`;
+        if (pileEl) pileEl.textContent = `PILE ${pileInfo.biggest}`;
       }
 
+      function animate() {
+        animFrame += 1;
+        updateAliveAnts();
+        updateBeliefAndTarget();
+        updateSearcher();
+        updatePilingLogic();
+        drawScene();
+        rafId = requestAnimationFrame(animate);
+      }
+
+      if (rafId) cancelAnimationFrame(rafId);
       resizeSwarm();
-      createAgents();
-      window.addEventListener('resize', () => {
-        resizeSwarm();
-        createAgents();
-      });
-      requestAnimationFrame(drawScene);
+      initSimulation();
+      window.addEventListener('resize', resizeSwarm);
+      rafId = requestAnimationFrame(animate);
     }
   </script>
 </body>
