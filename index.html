@@ -386,6 +386,14 @@
       gap: 1rem;
     }
 
+    .featured-proj {
+      grid-column: span 2;
+    }
+
+    .featured-proj .proj-img {
+      aspect-ratio: 16 / 9;
+    }
+
     .proj.card {
       border-radius: 24px;
       padding: 1.3rem;
@@ -679,7 +687,7 @@
         </div>
 
         <div class="cards">
-          <article class="proj card">
+          <article class="proj card featured-proj">
             <div class="proj-top">
               <div class="proj-title-row">
                 <h3>Bayesian Swarm Search Model (MATLAB)</h3>
@@ -719,7 +727,7 @@
           </article>
 
 
-          <article class="proj card">
+          <article class="proj card featured-proj">
             <div class="proj-top">
               <div class="proj-title-row">
                 <h3>AutoBook (MBSE / SysML)</h3>
