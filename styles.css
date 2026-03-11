@@ -14,7 +14,9 @@
   --radius: 18px;
   --radius2: 24px;
 }
-
+.nav .btn {
+  color: #0b1020;
+}
 *{box-sizing:border-box}
 html,body{
   margin:0;
